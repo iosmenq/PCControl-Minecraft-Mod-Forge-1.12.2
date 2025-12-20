@@ -1,3 +1,7 @@
+/*
+* Coded By iosmen (C) 2025
+*/
+
 package com.example.mccommands;
 
 import net.minecraft.command.CommandBase;
@@ -586,3 +590,4 @@ public class PCCControlMod {
         }
     }
 }
+
