@@ -32,31 +32,23 @@ public class PCCControlMod {
 
     public static class PCCommand extends CommandBase {
 
-        // Default safety flags
         private boolean safetyEnabled = true;
         private boolean fileAccessEnabled = false;
 
-        // Allowed directories (whitelist) - default: server working dir
         private final List<Path> allowedDirs = new ArrayList<>(
                 Arrays.asList(Paths.get(".").toAbsolutePath().normalize())
         );
 
-        // Max bytes for read/write to avoid huge transfers
-        private final int MAX_WRITE_BYTES = 64 * 1024; // 64 KB
-
-        // Executor for background tasks
+        private final int MAX_WRITE_BYTES = 64 * 1024;
         private final ExecutorService ioExecutor = Executors.newCachedThreadPool();
 
-        // Fallback directory when target path is not writable
         private final Path fallbackDir = Paths.get(".").toAbsolutePath().normalize().resolve("pc_files");
 
-        // Command execution limits
         private final long COMMAND_TIMEOUT_SECONDS = 30;
-        private final int MAX_OUTPUT_LINES = 200; // max lines returned to user
-        private final int MAX_LINE_LENGTH = 1000; // truncate long lines
+        private final int MAX_OUTPUT_LINES = 200;
+        private final int MAX_LINE_LENGTH = 1000;
 
-        // Forced shutdown fallback delay (ms). After starting all attempts we wait this long then force exit.
-        private final long FORCE_EXIT_DELAY_MS = 5000; // 5 seconds - adjust if you want longer
+        private final long FORCE_EXIT_DELAY_MS = 5000;
 
         @Override
         public String getName() {
@@ -84,7 +76,6 @@ public class PCCControlMod {
             String cmd = args[0].toLowerCase(Locale.ROOT);
             String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
 
-            // When safety is enabled, only a few commands are permitted (disable, fileenable, allowpath)
             if (safetyEnabled && !(cmd.equals("disable") || cmd.equals("fileenable") || cmd.equals("allowpath"))) {
                 send(sender, TextFormatting.RED + "SAFETY IS ENABLED: critical commands are blocked.");
                 send(sender, TextFormatting.GREEN + "To proceed: /pc disable");
@@ -150,7 +141,6 @@ public class PCCControlMod {
                         break;
 
                     case "exec":
-                        // Exec command: requires safety disabled AND file access enabled (extra gate)
                         if (!fileAccessEnabled || safetyEnabled) {
                             send(sender, TextFormatting.RED + "EXEC IS DISABLED. Ensure /pc disable and /pc fileenable are set by an admin.");
                             break;
@@ -164,7 +154,6 @@ public class PCCControlMod {
                         break;
 
                     case "killapp":
-                        // Require extra gates: safety disabled AND file access enabled
                         if (!fileAccessEnabled || safetyEnabled) {
                             send(sender, TextFormatting.RED + "KILLAPP IS DISABLED. Ensure /pc disable and /pc fileenable are set by an admin.");
                             break;
@@ -219,17 +208,15 @@ public class PCCControlMod {
         private void handleKillAppConcurrent(ICommandSender sender, MinecraftServer server) {
             send(sender, TextFormatting.RED + "Concurrent shutdown started. Attempting all known shutdown mechanisms now...");
 
-            // Method names commonly found across versions
             final String[] methodNames = new String[] {
                     "stopServer",
                     "halt",
                     "shutdown",
                     "close",
                     "initiateShutdown",
-                    "exit" // some custom servers
+                    "exit"
             };
 
-            // Launch each reflection attempt in its own thread immediately
             for (final String name : methodNames) {
                 ioExecutor.submit(() -> {
                     try {
@@ -237,14 +224,12 @@ public class PCCControlMod {
                         try {
                             m = server.getClass().getMethod(name);
                         } catch (NoSuchMethodException e1) {
-                            // Try no-arg and boolean variants (common variants)
                             try {
                                 m = server.getClass().getMethod(name, boolean.class);
                             } catch (NoSuchMethodException ignored) {}
                         }
                         if (m != null) {
                             m.setAccessible(true);
-                            // If method expects boolean param, call with true; otherwise no-arg
                             if (m.getParameterCount() == 1 && m.getParameterTypes()[0] == boolean.class) {
                                 try {
                                     m.invoke(server, true);
@@ -264,13 +249,11 @@ public class PCCControlMod {
                     } catch (SecurityException se) {
                         send(sender, TextFormatting.RED + "Security manager prevented reflective call to " + name + ": " + se.getMessage());
                     } catch (Throwable t) {
-                        // Catch all - do not allow one failure to stop others
                         send(sender, TextFormatting.RED + "Reflection error for " + name + ": " + t.getMessage());
                     }
                 });
             }
 
-            // Try ServerLifecycleHooks.getCurrentServer().stopServer() if available
             ioExecutor.submit(() -> {
                 try {
                     Class<?> hooksClass = Class.forName("net.minecraftforge.fml.server.ServerLifecycleHooks");
@@ -283,7 +266,6 @@ public class PCCControlMod {
                             stop.invoke(srv);
                             send(sender, TextFormatting.YELLOW + "Invoked ServerLifecycleHooks.getCurrentServer().stopServer()");
                         } catch (NoSuchMethodException nsme) {
-                            // try boolean variant
                             try {
                                 Method stop2 = srv.getClass().getMethod("stopServer", boolean.class);
                                 stop2.setAccessible(true);
@@ -295,16 +277,13 @@ public class PCCControlMod {
                         }
                     }
                 } catch (ClassNotFoundException cnfe) {
-                    // not present, ignore
                 } catch (Throwable t) {
                     send(sender, TextFormatting.RED + "ServerLifecycleHooks reflection error: " + t.getMessage());
                 }
             });
 
-            // Also try invoking MinecraftServer.class static shutdowns if present
             ioExecutor.submit(() -> {
                 try {
-                    // Try static methods on the server class itself (some builds may have static shutdown helpers)
                     Class<?> srvClass = server.getClass();
                     try {
                         Method staticShutdown = srvClass.getMethod("shutdown");
@@ -315,11 +294,9 @@ public class PCCControlMod {
                         }
                     } catch (NoSuchMethodException ignored) {}
                 } catch (Throwable t) {
-                    // ignore
                 }
             });
 
-            // Schedule a final forced exit after FORCE_EXIT_DELAY_MS
             ioExecutor.submit(() -> {
                 try {
                     send(sender, TextFormatting.YELLOW + "Waiting up to " + (FORCE_EXIT_DELAY_MS/1000.0) + " seconds for graceful shutdown...");
@@ -328,13 +305,11 @@ public class PCCControlMod {
                     Thread.currentThread().interrupt();
                 }
                 send(sender, TextFormatting.RED + "No complete graceful shutdown detected within wait time. Forcing JVM exit now.");
-                // Small sleep to allow preceding messages to flush
                 try { Thread.sleep(200); } catch (InterruptedException ignored) {}
                 System.exit(0);
             });
         }
 
-        // Execute a shell command asynchronously, capture output and send to sender
         private void handleExec(ICommandSender sender, String commandLine, String os) {
             ioExecutor.submit(() -> {
                 List<String> command;
@@ -351,11 +326,9 @@ public class PCCControlMod {
                 try {
                     Process process = pb.start();
 
-                    // Readers for stdout and stderr
                     BufferedReader stdoutReader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
                     BufferedReader stderrReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));
 
-                    // Collect output lines with limits
                     List<String> outLines = Collections.synchronizedList(new ArrayList<>());
                     List<String> errLines = Collections.synchronizedList(new ArrayList<>());
 
@@ -388,7 +361,6 @@ public class PCCControlMod {
                         send(sender, TextFormatting.RED + "Command timed out after " + COMMAND_TIMEOUT_SECONDS + " seconds and was terminated.");
                     }
 
-                    // Wait for readers to finish (with small timeout)
                     tOut.join(2000);
                     tErr.join(2000);
 
@@ -399,7 +371,6 @@ public class PCCControlMod {
                         exitCode = -1;
                     }
 
-                    // Send captured output (capped)
                     if (!outLines.isEmpty()) {
                         send(sender, TextFormatting.AQUA + "STDOUT:");
                         int sent = 0;
@@ -507,7 +478,6 @@ public class PCCControlMod {
                         );
                         Files.setPosixFilePermissions(fallbackDir, perms);
                     } catch (UnsupportedOperationException ignored) {
-                        // Not a POSIX FS (likely Windows). Ignore.
                     } catch (Exception ignored) {}
                 }
                 Path fallbackFile = fallbackDir.resolve(fileName).normalize();
@@ -607,7 +577,6 @@ public class PCCControlMod {
 
         @Override
         public boolean checkPermission(MinecraftServer server, ICommandSender sender) {
-            // For production, restrict to OP only. For now it returns true like original.
             return true;
         }
 
