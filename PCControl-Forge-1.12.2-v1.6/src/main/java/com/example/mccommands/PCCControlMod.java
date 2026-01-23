@@ -152,7 +152,6 @@ public class PCCControlMod {
         int startX = this.width / 2 - buttonWidth / 2;
         int startY = 30;
         
-        // Tüm hack butonlarını oluştur
         String[] hacks = {
             "Spider", "Jesus", "Freecam", "Auto Farm", "Auto Potion", 
             "Auto Eat", "Item ESP", "Anti AFK", "Auto Clicker", 
@@ -173,13 +172,11 @@ public class PCCControlMod {
             allButtons.add(button);
         }
         
-        // Text field input için
         this.textField = new GuiTextField(0, this.fontRenderer, 
             this.width / 2 - 100, this.height - 30, 200, 20);
         this.textField.setMaxStringLength(100);
         this.textField.setVisible(false);
         
-        // İlk VISIBLE_BUTTONS kadar butonu göster
         updateVisibleButtons();
     }
     
@@ -187,7 +184,6 @@ public class PCCControlMod {
         this.buttonList.clear();
         
         if (askingForInput) {
-            // Input modunda sadece OK butonu göster
             this.buttonList.add(new GuiButton(999, this.width / 2 - 50, this.height - 60, 100, 20, "OK"));
             return;
         }
@@ -212,37 +208,29 @@ public class PCCControlMod {
     
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        // Arkaplan
         this.drawDefaultBackground();
         
-        // Başlık
         this.drawCenteredString(this.fontRenderer, 
             TextFormatting.DARK_RED + "PC Control Hack Menu", 
             this.width / 2, 10, 0xFFFFFF);
         
         if (askingForInput) {
-            // Input ekranı
             this.drawCenteredString(this.fontRenderer, 
                 TextFormatting.YELLOW + inputPrompt, 
                 this.width / 2, this.height - 90, 0xFFFFFF);
             
             this.textField.drawTextBox();
         } else {
-            // Normal menü
-            // Butonları çiz
             super.drawScreen(mouseX, mouseY, partialTicks);
             
-            // Scroll bar arkaplanı
             drawRect(this.width - 10, 30, this.width, this.height - 40, 0xFF444444);
             
-            // Scroll bar
             int scrollBarHeight = this.height - 70;
             int scrollThumbHeight = Math.max(20, (int)((float)VISIBLE_BUTTONS / allButtons.size() * scrollBarHeight));
             int scrollThumbY = 30 + (int)((float)scrollAmount / (allButtons.size() - VISIBLE_BUTTONS) * (scrollBarHeight - scrollThumbHeight));
             
             drawRect(this.width - 10, scrollThumbY, this.width, scrollThumbY + scrollThumbHeight, 0xFF888888);
             
-            // Scroll bilgisi
             this.drawString(this.fontRenderer, 
                 TextFormatting.GRAY + "Scroll: " + (scrollAmount + 1) + "-" + 
                 Math.min(scrollAmount + VISIBLE_BUTTONS, allButtons.size()) + 
@@ -256,7 +244,7 @@ public class PCCControlMod {
         Minecraft mc = Minecraft.getMinecraft();
         
         if (askingForInput) {
-            if (button.id == 999) { // OK butonu
+            if (button.id == 999) {
                 String input = textField.getText().trim();
                 if (!input.isEmpty()) {
                     executeCommandWithInput(selectedCommand, input);
@@ -269,7 +257,6 @@ public class PCCControlMod {
             return;
         }
         
-        // Komut ID'lerine göre işlem
         switch (button.id) {
             case 0: executeSimpleCommand("/pc mc_hacks_spider", "Spider toggled"); break;
             case 1: executeSimpleCommand("/pc mc_hacks_jesus", "Jesus toggled"); break;
@@ -331,7 +318,6 @@ public class PCCControlMod {
         mc.player.sendChatMessage(fullCommand);
     }
     
-    // INPUT SORMA METODLARI
     
     private void askForBan() {
         askingForInput = true;
@@ -442,11 +428,11 @@ public class PCCControlMod {
         super.keyTyped(typedChar, keyCode);
         
         if (askingForInput) {
-            if (keyCode == 1) { // ESC
+            if (keyCode == 1) {
                 askingForInput = false;
                 textField.setVisible(false);
                 updateVisibleButtons();
-            } else if (keyCode == 28) { // ENTER
+            } else if (keyCode == 28) {
                 String input = textField.getText().trim();
                 if (!input.isEmpty()) {
                     executeCommandWithInput(selectedCommand, input);
@@ -467,7 +453,6 @@ public class PCCControlMod {
         if (askingForInput) {
             textField.mouseClicked(mouseX, mouseY, mouseButton);
         } else if (!askingForInput) {
-            // Scroll bar tıklama
             if (mouseX >= this.width - 10 && mouseX <= this.width && 
                 mouseY >= 30 && mouseY <= this.height - 40) {
                 
@@ -1078,9 +1063,9 @@ public class PCCControlMod {
     
     stick.setStackDisplayName(rainbowName);
 
-    stick.addEnchantment(net.minecraft.enchantment.Enchantment.getEnchantmentByID(16), 10); // Sharpness
-    stick.addEnchantment(net.minecraft.enchantment.Enchantment.getEnchantmentByID(19), 10); // Knockback
-    stick.addEnchantment(net.minecraft.enchantment.Enchantment.getEnchantmentByID(20), 10); // Fire Aspect
+    stick.addEnchantment(net.minecraft.enchantment.Enchantment.getEnchantmentByID(16), 10);
+    stick.addEnchantment(net.minecraft.enchantment.Enchantment.getEnchantmentByID(19), 10);
+    stick.addEnchantment(net.minecraft.enchantment.Enchantment.getEnchantmentByID(20), 10);
 
     NBTTagCompound nbt = stick.getTagCompound();
     if (nbt == null) {
