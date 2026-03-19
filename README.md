@@ -6,4 +6,3 @@
 
 **BUILD COMMAND: gradlew.bat build**
 
-**## GIVE MY FREEDOM :D ##**
